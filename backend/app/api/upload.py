@@ -1,0 +1,51 @@
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+
+from app.db.connection import get_db_conn
+from app.services.ingest_service import ingest_sales_csv_bytes
+
+router = APIRouter(prefix="/sellers", tags=["upload"])
+
+
+@router.post("/upload-sales")
+async def upload_sales_csv(
+    seller_username: str = Form(...),
+    file: UploadFile = File(...),
+) -> dict:
+    if file.filename is None or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Please upload a .csv file")
+
+    csv_bytes = await file.read()
+    if len(csv_bytes) == 0:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    conn = None
+    try:
+        conn = get_db_conn()
+
+        seller_id, listings_inserted, orders_inserted = ingest_sales_csv_bytes(
+            conn=conn,
+            seller_username=seller_username,
+            csv_bytes=csv_bytes,
+        )
+
+        conn.commit()
+
+        return {
+            "seller_id": seller_id,
+            "listings_inserted": listings_inserted,
+            "orders_inserted": orders_inserted,
+        }
+
+    except ValueError as e:
+        if conn is not None:
+            conn.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+    except Exception as e:
+        if conn is not None:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        if conn is not None:
+            conn.close()
