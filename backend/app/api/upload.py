@@ -1,7 +1,8 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
 
 from app.db.connection import get_db_conn
-from app.services.ingest_service import ingest_sales_csv_bytes
+from app.services.ingest_service import ingest_sales_csv_bytes, ensure_seller
+from app.services.cleanup_service import clear_seller_data
 
 router = APIRouter(prefix="/sellers", tags=["upload"])
 
@@ -10,6 +11,7 @@ router = APIRouter(prefix="/sellers", tags=["upload"])
 async def upload_sales_csv(
     seller_username: str = Form(...),
     file: UploadFile = File(...),
+    replace: bool = Query(False),
 ) -> dict:
     if file.filename is None or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Please upload a .csv file")
@@ -21,6 +23,11 @@ async def upload_sales_csv(
     conn = None
     try:
         conn = get_db_conn()
+
+        seller_id = ensure_seller(conn, seller_username)
+
+        if replace:
+            clear_seller_data(conn, seller_id)
 
         seller_id, listings_inserted, orders_inserted = ingest_sales_csv_bytes(
             conn=conn,
@@ -34,6 +41,7 @@ async def upload_sales_csv(
             "seller_id": seller_id,
             "listings_inserted": listings_inserted,
             "orders_inserted": orders_inserted,
+            "replaced": replace,
         }
 
     except ValueError as e:
