@@ -1,7 +1,7 @@
 import csv
 from datetime import datetime
 from typing import Tuple
-
+import hashlib
 import psycopg
 
 
@@ -56,6 +56,20 @@ def build_title(row: dict) -> str:
     return base
 
 
+def make_source_key(
+    title: str,
+    category: str,
+    listed_at: datetime,
+    list_price_cents: int,
+) -> str:
+    normalized_title = (title or "").strip().lower()
+    normalized_category = (category or "").strip().lower()
+    listed_day = listed_at.strftime("%Y-%m-%d")
+
+    raw = normalized_title + "|" + normalized_category + "|" + listed_day + "|" + str(list_price_cents)
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    return digest
+
 def ensure_seller(conn: psycopg.Connection, username: str) -> int:
     with conn.cursor() as cur:
         cur.execute("SELECT id FROM sellers WHERE username = %s;", (username,))
@@ -69,22 +83,44 @@ def ensure_seller(conn: psycopg.Connection, username: str) -> int:
 
 
 def insert_listing(
-    conn: psycopg.Connection,
+    conn,
     seller_id: int,
+    source_key: str,
     title: str,
     category: str,
     list_price_cents: int,
-    listed_at: datetime,
+    listed_at,
 ) -> int:
     with conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO listings (seller_id, title, category, list_price_cents, listed_at)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO listings (
+                seller_id,
+                source_key,
+                title,
+                category,
+                list_price_cents,
+                listed_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (seller_id, source_key)
+            DO UPDATE SET
+                title = EXCLUDED.title,
+                category = EXCLUDED.category,
+                list_price_cents = EXCLUDED.list_price_cents,
+                listed_at = EXCLUDED.listed_at
             RETURNING id;
             """,
-            (seller_id, title, category, list_price_cents, listed_at),
+            (
+                seller_id,
+                source_key,
+                title,
+                category,
+                list_price_cents,
+                listed_at,
+            ),
         )
+
         row = cur.fetchone()
         return int(row["id"])
 
@@ -150,9 +186,18 @@ def ingest_sales_csv_bytes(
         list_price_cents = parse_money_to_cents(item_price)
         sold_price_cents = list_price_cents  #assumption for mvp (will improve later)
 
+        source_key = make_source_key(
+            title=title,
+            category=category,
+            listed_at=listed_at,
+            list_price_cents=list_price_cents,
+        )
+
+
         listing_id = insert_listing(
             conn=conn,
             seller_id=seller_id,
+            source_key=source_key,
             title=title,
             category=category,
             list_price_cents=list_price_cents,

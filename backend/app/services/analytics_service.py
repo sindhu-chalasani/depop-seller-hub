@@ -1,5 +1,6 @@
 from app.db.connection import get_db_conn
 from app.schemas.seller import SellerSummary
+from app.schemas.items import TopItem
 
 
 def load_sql_file(path: str) -> str:
@@ -51,6 +52,44 @@ def get_seller_summary(seller_id: int) -> SellerSummary:
             active_listings=active_listings,
         )
         return summary
+
+    finally:
+        if conn is not None:
+            conn.close()
+
+def get_top_items(seller_id: int, limit: int) -> list[TopItem]:
+    if limit < 1:
+        limit = 1
+    elif limit > 50:
+        limit = 50
+
+    sql = load_sql_file("app/queries/top_items.sql")
+
+    conn = None
+    try:
+        conn = get_db_conn()
+        with conn.cursor() as cur:
+            cur.execute(sql, {"seller_id": seller_id, "limit": limit})
+            rows = cur.fetchall()
+
+        items = list()
+        for row in rows:
+            listing_id = int(row.get("listing_id"))
+            title = str(row.get("title") or "")
+            category = str(row.get("category") or "")
+            units_sold = int(row.get("units_sold") or 0)
+            revenue_cents = int(row.get("revenue_cents") or 0)
+
+            item = TopItem(
+                listing_id=listing_id,
+                title=title,
+                category=category,
+                units_sold=units_sold,
+                revenue_cents=revenue_cents,
+            )
+            items.append(item)
+
+        return items
 
     finally:
         if conn is not None:
