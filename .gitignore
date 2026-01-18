@@ -2,3 +2,14 @@
 __pycache__/
 *.pyc
 .DS_Store
+aws/lambdas/**/pg8000*
+aws/lambdas/**/scramp*
+aws/lambdas/**/asn1crypto*
+aws/lambdas/**/python_dateutil*
+aws/lambdas/**/six.py
+aws/lambdas/**/six-*.dist-info/
+aws/lambdas/**/*.dist-info/
+aws/lambdas/**/__pycache__/
+aws/lambdas/**/dateutil/
+aws/lambdas/**/tz/
+sales.csv
