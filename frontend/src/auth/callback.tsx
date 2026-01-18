@@ -18,6 +18,8 @@ export default function Callback() {
         .then(res => res.json())
         .then(tokens => {
             localStorage.setItem("access_token", tokens.access_token);
+            localStorage.setItem("id_token", tokens.id_token);
+
             window.location.href = "/";
         });
     }, []);
