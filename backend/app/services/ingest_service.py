@@ -12,10 +12,13 @@ def parse_money_to_cents(money_str: str) -> int:
     cleaned = money_str.strip()
     cleaned = cleaned.replace("$", "").replace(",", "")
 
-    if cleaned == "":
+    if cleaned == "" or cleaned == "N/A" or cleaned == "-" or cleaned == '="-"':
         return 0
 
-    cents = int(round(float(cleaned) * 100))
+    try:
+        cents = int(round(float(cleaned) * 100))
+    except ValueError:
+        return 0
     return cents
 
 
@@ -131,15 +134,29 @@ def insert_order(
     seller_id: int,
     sold_price_cents: int,
     sold_at: datetime,
+    depop_fee_cents: int = 0,
+    payment_fee_cents: int = 0,
+    boosting_fee_cents: int = 0,
+    shipping_cost_cents: int = 0,
+    refunded_cents: int = 0,
+    fees_refunded_cents: int = 0,
 ) -> int:
     with conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO orders (listing_id, seller_id, sold_price_cents, sold_at)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO orders (
+                listing_id, seller_id, sold_price_cents, sold_at,
+                depop_fee_cents, payment_fee_cents, boosting_fee_cents,
+                shipping_cost_cents, refunded_cents, fees_refunded_cents
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id;
             """,
-            (listing_id, seller_id, sold_price_cents, sold_at),
+            (
+                listing_id, seller_id, sold_price_cents, sold_at,
+                depop_fee_cents, payment_fee_cents, boosting_fee_cents,
+                shipping_cost_cents, refunded_cents, fees_refunded_cents,
+            ),
         )
         row = cur.fetchone()
         return int(row["id"])
@@ -184,7 +201,14 @@ def ingest_sales_csv_bytes(
         title = build_title(row)
 
         list_price_cents = parse_money_to_cents(item_price)
-        sold_price_cents = list_price_cents  #assumption for mvp (will improve later)
+        sold_price_cents = list_price_cents
+
+        depop_fee_cents = parse_money_to_cents(row.get("Depop fee") or "")
+        payment_fee_cents = parse_money_to_cents(row.get("Depop Payments fee") or "")
+        boosting_fee_cents = parse_money_to_cents(row.get("Boosting fee") or "")
+        shipping_cost_cents = parse_money_to_cents(row.get("USPS Cost") or "")
+        refunded_cents = parse_money_to_cents(row.get("Refunded to buyer amount") or "")
+        fees_refunded_cents = parse_money_to_cents(row.get("Fees refunded to seller") or "")
 
         source_key = make_source_key(
             title=title,
@@ -192,7 +216,6 @@ def ingest_sales_csv_bytes(
             listed_at=listed_at,
             list_price_cents=list_price_cents,
         )
-
 
         listing_id = insert_listing(
             conn=conn,
@@ -211,6 +234,12 @@ def ingest_sales_csv_bytes(
             seller_id=seller_id,
             sold_price_cents=sold_price_cents,
             sold_at=sold_at,
+            depop_fee_cents=depop_fee_cents,
+            payment_fee_cents=payment_fee_cents,
+            boosting_fee_cents=boosting_fee_cents,
+            shipping_cost_cents=shipping_cost_cents,
+            refunded_cents=refunded_cents,
+            fees_refunded_cents=fees_refunded_cents,
         )
         orders_inserted += 1
 

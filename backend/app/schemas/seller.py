@@ -4,7 +4,9 @@ from pydantic import BaseModel
 class SellerSummary(BaseModel):
     seller_id: int
 
-    revenue_cents: int
+    gmv_cents: int
+    profit_cents: int
+    total_fees_cents: int
     units_sold: int
     avg_sale_price_cents: int
 
@@ -13,3 +15,16 @@ class SellerSummary(BaseModel):
 
     avg_days_to_sell: float
     active_listings: int
+
+
+class MonthlySales(BaseModel):
+    month: str
+    revenue_cents: int
+    profit_cents: int
+    units_sold: int
+
+
+class CategoryBreakdown(BaseModel):
+    category: str
+    revenue_cents: int
+    units_sold: int

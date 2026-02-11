@@ -7,7 +7,10 @@ listed AS (
 sold AS (
   SELECT
     COUNT(*)::int AS units_sold,
-    COALESCE(SUM(o.sold_price_cents), 0)::int AS revenue_cents,
+    COALESCE(SUM(o.sold_price_cents), 0)::int AS gmv_cents,
+    COALESCE(SUM(o.depop_fee_cents + o.payment_fee_cents + o.boosting_fee_cents + o.shipping_cost_cents), 0)::int AS total_fees_cents,
+    COALESCE(SUM(o.refunded_cents), 0)::int AS total_refunded_cents,
+    COALESCE(SUM(o.fees_refunded_cents), 0)::int AS total_fees_refunded_cents,
     AVG(o.sold_price_cents)::float AS avg_sale_price_cents,
     AVG(EXTRACT(EPOCH FROM (o.sold_at - l.listed_at)) / 86400.0)::float AS avg_days_to_sell
   FROM orders o
@@ -25,7 +28,9 @@ SELECT
   %(seller_id)s::int AS seller_id,
   listed.listed_count,
   sold.units_sold,
-  sold.revenue_cents,
+  sold.gmv_cents,
+  (sold.gmv_cents - sold.total_fees_cents - sold.total_refunded_cents + sold.total_fees_refunded_cents)::int AS profit_cents,
+  sold.total_fees_cents,
   sold.avg_sale_price_cents,
   sold.avg_days_to_sell,
   active.active_listings

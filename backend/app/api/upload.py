@@ -1,15 +1,18 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query, Depends
+from typing import Dict, Any
 
 from app.db.connection import get_db_conn
 from app.services.ingest_service import ingest_sales_csv_bytes, ensure_seller
 from app.services.cleanup_service import clear_seller_data
 from app.services.analytics_service import get_seller_summary
+from app.auth import get_current_user
 
 router = APIRouter(prefix="/sellers", tags=["upload"])
 
 
 @router.post("/upload-sales")
 async def upload_sales_csv(
+    _user: Dict[str, Any] = Depends(get_current_user),
     seller_username: str = Form(...),
     file: UploadFile = File(...),
     replace: bool = Query(False),
@@ -61,6 +64,7 @@ async def upload_sales_csv(
 
 @router.post("/upload-and-summary")
 async def upload_sales_and_summary(
+    _user: Dict[str, Any] = Depends(get_current_user),
     seller_username: str = Form(...),
     file: UploadFile = File(...),
     replace: bool = Query(False),

@@ -20,6 +20,12 @@ CREATE TABLE IF NOT EXISTS orders (
     listing_id INTEGER NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
     seller_id INTEGER NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
     sold_price_cents INTEGER NOT NULL CHECK (sold_price_cents >= 0),
+    depop_fee_cents INTEGER NOT NULL DEFAULT 0,
+    payment_fee_cents INTEGER NOT NULL DEFAULT 0,
+    boosting_fee_cents INTEGER NOT NULL DEFAULT 0,
+    shipping_cost_cents INTEGER NOT NULL DEFAULT 0,
+    refunded_cents INTEGER NOT NULL DEFAULT 0,
+    fees_refunded_cents INTEGER NOT NULL DEFAULT 0,
     sold_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

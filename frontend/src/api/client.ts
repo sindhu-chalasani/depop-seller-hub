@@ -1,10 +1,25 @@
 export async function apiFetch(path: string, options: RequestInit = {}) {
+    const token = localStorage.getItem("access_token");
+
+    const headers: Record<string, string> = {};
+    if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${import.meta.env.VITE_API_BASE}${path}`, {
         ...options,
         headers: {
-        ...options.headers,
+            ...headers,
+            ...options.headers,
         },
     });
+
+    if (response.status === 401) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("id_token");
+        window.location.href = "/login";
+        throw new Error("Session expired");
+    }
 
     if (!response.ok) {
         const text = await response.text();

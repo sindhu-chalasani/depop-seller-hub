@@ -1,5 +1,5 @@
 from app.db.connection import get_db_conn
-from app.schemas.seller import SellerSummary
+from app.schemas.seller import SellerSummary, MonthlySales, CategoryBreakdown
 from app.schemas.items import TopItem
 
 
@@ -20,7 +20,9 @@ def get_seller_summary(seller_id: int) -> SellerSummary:
 
         listed_count = int(row.get("listed_count") or 0)
         units_sold = int(row.get("units_sold") or 0)
-        revenue_cents = int(row.get("revenue_cents") or 0)
+        gmv_cents = int(row.get("gmv_cents") or 0)
+        profit_cents = int(row.get("profit_cents") or 0)
+        total_fees_cents = int(row.get("total_fees_cents") or 0)
 
         avg_sale_price_cents_float = row.get("avg_sale_price_cents")
         if avg_sale_price_cents_float is None:
@@ -43,7 +45,9 @@ def get_seller_summary(seller_id: int) -> SellerSummary:
 
         summary = SellerSummary(
             seller_id=seller_id,
-            revenue_cents=revenue_cents,
+            gmv_cents=gmv_cents,
+            profit_cents=profit_cents,
+            total_fees_cents=total_fees_cents,
             units_sold=units_sold,
             avg_sale_price_cents=avg_sale_price_cents,
             listed_count=listed_count,
@@ -90,6 +94,55 @@ def get_top_items(seller_id: int, limit: int) -> list[TopItem]:
             items.append(item)
 
         return items
+
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def get_sales_over_time(seller_id: int) -> list[MonthlySales]:
+    sql = load_sql_file("app/queries/sales_over_time.sql")
+
+    conn = None
+    try:
+        conn = get_db_conn()
+        with conn.cursor() as cur:
+            cur.execute(sql, {"seller_id": seller_id})
+            rows = cur.fetchall()
+
+        results = []
+        for row in rows:
+            results.append(MonthlySales(
+                month=str(row.get("month")),
+                revenue_cents=int(row.get("revenue_cents") or 0),
+                profit_cents=int(row.get("profit_cents") or 0),
+                units_sold=int(row.get("units_sold") or 0),
+            ))
+        return results
+
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def get_category_breakdown(seller_id: int) -> list[CategoryBreakdown]:
+    sql = load_sql_file("app/queries/category_breakdown.sql")
+
+    conn = None
+    try:
+        conn = get_db_conn()
+        with conn.cursor() as cur:
+            cur.execute(sql, {"seller_id": seller_id})
+            rows = cur.fetchall()
+
+        results = []
+        for row in rows:
+            results.append(CategoryBreakdown(
+                category=str(row.get("category") or "Unknown"),
+                revenue_cents=int(row.get("revenue_cents") or 0),
+                units_sold=int(row.get("units_sold") or 0),
+            ))
+        return results
 
     finally:
         if conn is not None:

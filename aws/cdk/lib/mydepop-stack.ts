@@ -135,26 +135,26 @@ export class MyDepopStack extends cdk.Stack {
     //http api + jwt authorizer
     const httpApi = new apigwv2.HttpApi(this, "MyDepopHttpApi");
 
-    const jwtAuthorizer = new authorizers.HttpJwtAuthorizer(
-      "CognitoJwtAuthorizer",
-      `https://cognito-idp.${this.region}.amazonaws.com/${userPool.userPoolId}`,
-      {
-        jwtAudience: [userPoolClient.userPoolClientId],
-      }
-    );
+    //const jwtAuthorizer = new authorizers.HttpJwtAuthorizer(
+    //  "CognitoJwtAuthorizer",
+    //  `https://cognito-idp.${this.region}.amazonaws.com/${userPool.userPoolId}`,
+    //  {
+    //    jwtAudience: [userPoolClient.userPoolClientId],
+    //  }
+    //);
 
     httpApi.addRoutes({
       path: "/presign",
       methods: [apigwv2.HttpMethod.POST],
       integration: new integrations.HttpLambdaIntegration("PresignIntegration", apiFn),
-      authorizer: jwtAuthorizer,
+      //authorizer: jwtAuthorizer,
     });
 
     httpApi.addRoutes({
       path: "/kpis",
       methods: [apigwv2.HttpMethod.GET],
       integration: new integrations.HttpLambdaIntegration("KpisIntegration", apiFn),
-      authorizer: jwtAuthorizer,
+      //authorizer: jwtAuthorizer,
     });
 
     //outputs

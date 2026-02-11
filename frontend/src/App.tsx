@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import Login from "./pages/Login";
-import Callback from "./auth/callback";
+import SignUp from "./pages/SignUp";
 import Dashboard from "./pages/Dashboard";
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -14,7 +14,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/callback" element={<Callback />} />
+      <Route path="/signup" element={<SignUp />} />
 
       <Route
         path="/"
@@ -25,7 +25,6 @@ export default function App() {
         }
       />
 
-      {/*fallback so unknown routes don't render nothing */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
